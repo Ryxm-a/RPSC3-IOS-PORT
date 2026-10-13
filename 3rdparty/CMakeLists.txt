@@ -1,3 +1,4 @@
+
 find_package(PkgConfig)
 include(ExternalProject)
 include(CMakeDependentOption)
@@ -21,7 +22,6 @@ add_subdirectory(zlib EXCLUDE_FROM_ALL)
 
 # ZSTD
 add_subdirectory(zstd EXCLUDE_FROM_ALL)
-
 # 7zip sdk
 add_subdirectory(7zip EXCLUDE_FROM_ALL)
 
@@ -30,8 +30,6 @@ add_subdirectory(protobuf EXCLUDE_FROM_ALL)
 
 # libPNG
 add_subdirectory(libpng EXCLUDE_FROM_ALL)
-
-
 # pugixml
 if (USE_SYSTEM_PUGIXML)
 	pkg_check_modules(PUGIXML REQUIRED IMPORTED_TARGET pugixml>=1.15)
@@ -40,7 +38,6 @@ if (USE_SYSTEM_PUGIXML)
 else()
 	add_subdirectory(pugixml EXCLUDE_FROM_ALL)
 endif()
-
 if (USE_SYSTEM_VULKAN_MEMORY_ALLOCATOR)
 	find_package(VulkanMemoryAllocator REQUIRED GLOBAL)
 	add_library(3rdparty::vulkanmemoryallocator ALIAS GPUOpen::VulkanMemoryAllocator)
@@ -49,7 +46,6 @@ else()
 	target_include_directories(3rdparty_vulkanmemoryallocator SYSTEM INTERFACE GPUOpen/VulkanMemoryAllocator/include)
 	add_library(3rdparty::vulkanmemoryallocator ALIAS 3rdparty_vulkanmemoryallocator)
 endif()
-
 # libusb
 if(CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD")
 	pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0>=1.0 )
@@ -72,21 +68,16 @@ elseif(MSVC)
 	add_subdirectory(libusb EXCLUDE_FROM_ALL)
 else()
 	if(USE_SYSTEM_LIBUSB)
-		# we have the system libusb and have selected to use it
 		add_library(usb-1.0-shared INTERFACE)
 		target_link_libraries(usb-1.0-shared INTERFACE PkgConfig::LIBUSB)
 	else()
-		# we don't have the system libusb, so we compile from submodule
 		unset(LIBUSB_LIBRARIES CACHE)
 		add_subdirectory(libusb EXCLUDE_FROM_ALL)
-
 		if (NOT TARGET usb-1.0 AND TARGET usb-1.0-static)
 			add_library(usb-1.0 ALIAS usb-1.0-static)
 		endif()
 	endif()
 endif()
-
-
 # hidapi
 if(IOS)
 	add_library(3rdparty_hidapi INTERFACE)
@@ -100,8 +91,6 @@ add_subdirectory(glslang EXCLUDE_FROM_ALL)
 
 # yaml-cpp
 add_subdirectory(yaml-cpp)
-
-
 # OpenGL
 
 if (NOT ANDROID AND NOT APPLE)
@@ -109,7 +98,6 @@ if (NOT ANDROID AND NOT APPLE)
 
 	add_library(3rdparty_opengl INTERFACE)
 	target_include_directories(3rdparty_opengl SYSTEM INTERFACE GL)
-
 	if (WIN32)
 		if(NOT MSVC)
 			target_link_libraries(3rdparty_opengl INTERFACE OpenGL::GL OpenGL::GLU)
@@ -123,7 +111,6 @@ else()
 	add_library(3rdparty_opengl INTERFACE)
 	target_compile_definitions(3rdparty_opengl INTERFACE WITHOUT_OPENGL=1)
 endif()
-
 # stblib
 add_subdirectory(stblib)
 
@@ -142,7 +129,6 @@ endif()
 
 # SoundTouch
 add_subdirectory(SoundTouch EXCLUDE_FROM_ALL)
-
 # libevdev
 set(LIBEVDEV_TARGET 3rdparty_dummy_lib)
 if(USE_LIBEVDEV)
@@ -157,8 +143,6 @@ if(USE_LIBEVDEV)
 		set(LIBEVDEV_TARGET 3rdparty_libevdev)
 	endif()
 endif()
-
-
 # Vulkan
 set(VULKAN_TARGET 3rdparty_dummy_lib)
 if(USE_VULKAN)
@@ -179,7 +163,6 @@ if(USE_VULKAN)
 			message(STATUS "RPCS3: Using system MoltenVK")
 		else()
 			message(STATUS "RPCS3: MoltenVK submodule")
-
 			execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
 				WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/MoltenVK"
 			)
@@ -192,7 +175,6 @@ if(USE_VULKAN)
 			set_target_properties(moltenvk_lib
 				PROPERTIES IMPORTED_LOCATION "{Vulkan_LIBRARY}"
 			)
-
 			set(VULKAN_SDK "${CMAKE_CURRENT_SOURCE_DIR}/MoltenVK/MoltenVK/MoltenVK")
 			set(VK_ICD_FILENAMES "${CMAKE_CURRENT_SOURCE_DIR}/MoltenVK/MoltenVK/MoltenVK/icd/MoltenVK_icd.json")
 			set(Vulkan_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/MoltenVK/MoltenVK/MoltenVK/include")
@@ -200,9 +182,8 @@ if(USE_VULKAN)
 			set(Vulkan_TOOLS "${CMAKE_CURRENT_SOURCE_DIR}/MoltenVK/MoltenVK/Build/Products/Release")
 		endif()
 	endif()
-
 	if(NOT IOS)
-	find_package(Vulkan)
+		find_package(Vulkan)
 	endif()
 	if(IOS)
 		# MoltenVK target already defined above
@@ -218,7 +199,6 @@ if(USE_VULKAN)
 					SYSTEM INTERFACE ${WAYLAND_INCLUDE_DIR})
 			endif()
 		endif()
-
 		set(VULKAN_TARGET 3rdparty_vulkan)
 	else()
 		message(WARNING "USE_VULKAN was enabled, but libvulkan was not found. RPCS3 will be compiled without Vulkan support.")
@@ -227,10 +207,8 @@ if(USE_VULKAN)
 		endif()
 	endif()
 endif()
-
 # AsmJit
 add_subdirectory(asmjit EXCLUDE_FROM_ALL)
-
 # SDL3
 set(SDL3_TARGET 3rdparty_dummy_lib)
 if(USE_SDL)
@@ -253,7 +231,6 @@ if(USE_SDL)
 		set(SDL3_DIR "${CMAKE_CURRENT_BINARY_DIR}/libsdl-org/SDL" CACHE STRING "")
 	endif()
 endif()
-
 # OpenAL
 if (NOT ANDROID AND NOT IOS)
 	add_subdirectory(OpenAL EXCLUDE_FROM_ALL)
@@ -261,7 +238,6 @@ else()
 	add_library(3rdparty_openal INTERFACE)
 	target_compile_definitions(3rdparty_openal INTERFACE WITHOUT_OPENAL=1)
 endif()
-
 # FAudio
 set(FAUDIO_TARGET 3rdparty_dummy_lib)
 if(USE_FAUDIO)
@@ -296,10 +272,7 @@ if(USE_FAUDIO)
 		endif()
 	endif()
 endif()
-
 set_property(TARGET ${FAUDIO_TARGET} PROPERTY FOLDER "3rdparty/")
-
-
 # FFMPEG
 if(NOT ANDROID AND NOT IOS)
 	add_library(3rdparty_ffmpeg INTERFACE)
@@ -308,7 +281,6 @@ if(NOT ANDROID AND NOT IOS)
 	if(USE_SYSTEM_FFMPEG)
 		message(STATUS "RPCS3: using shared ffmpeg")
 		find_package(FFMPEG REQUIRED)
-
 		target_include_directories(3rdparty_ffmpeg SYSTEM INTERFACE ${FFMPEG_INCLUDE_DIR})
 		target_link_libraries(3rdparty_ffmpeg INTERFACE ${FFMPEG_LIBRARIES})
 	else()
@@ -320,13 +292,11 @@ if(NOT ANDROID AND NOT IOS)
 		if (WIN32)
 			target_link_libraries(3rdparty_ffmpeg INTERFACE "Bcrypt.lib")
 		endif()
-
 		find_library(FFMPEG_LIB_AVFORMAT avformat PATHS ${FFMPEG_LIB_DIR} NO_DEFAULT_PATH)
 		find_library(FFMPEG_LIB_AVCODEC avcodec PATHS ${FFMPEG_LIB_DIR} NO_DEFAULT_PATH)
 		find_library(FFMPEG_LIB_AVUTIL avutil PATHS ${FFMPEG_LIB_DIR} NO_DEFAULT_PATH)
 		find_library(FFMPEG_LIB_SWSCALE swscale PATHS ${FFMPEG_LIB_DIR} NO_DEFAULT_PATH)
 		find_library(FFMPEG_LIB_SWRESAMPLE swresample PATHS ${FFMPEG_LIB_DIR} NO_DEFAULT_PATH)
-
 		if (FFMPEG_LIB_AVFORMAT MATCHES "FFMPEG_LIB_AVFORMAT-NOTFOUND")
 			message(FATAL_ERROR "@#$%! FFMPEG NOT FOUND! ${FFMPEG_LIB_DIR}")
 		endif()
@@ -342,8 +312,6 @@ if(NOT ANDROID AND NOT IOS)
 		target_include_directories(3rdparty_ffmpeg SYSTEM INTERFACE "ffmpeg/include")
 	endif()
 endif()
-
-
 # GLEW
 add_library(3rdparty_glew INTERFACE)
 if(NOT MSVC AND NOT ANDROID AND NOT APPLE)
@@ -369,13 +337,11 @@ add_subdirectory(rtmidi EXCLUDE_FROM_ALL)
 
 # OPENCV
 add_subdirectory(opencv EXCLUDE_FROM_ALL)
-
 # FUSION
 add_subdirectory(fusion EXCLUDE_FROM_ALL)
 
 # FERAL INTERACTIVE
 add_subdirectory(feralinteractive EXCLUDE_FROM_ALL)
-
 # add nice ALIAS targets for ease of use
 if(USE_SYSTEM_LIBUSB)
 	add_library(3rdparty::libusb ALIAS usb-1.0-shared)
@@ -398,7 +364,11 @@ add_library(3rdparty::faudio ALIAS ${FAUDIO_TARGET})
 add_library(3rdparty::libevdev ALIAS ${LIBEVDEV_TARGET})
 add_library(3rdparty::vulkan ALIAS ${VULKAN_TARGET})
 add_library(3rdparty::openal ALIAS 3rdparty_openal)
-add_library(3rdparty::ffmpeg ALIAS 3rdparty_ffmpeg)
+
+if(TARGET 3rdparty_ffmpeg)
+	add_library(3rdparty::ffmpeg ALIAS 3rdparty_ffmpeg)
+endif()
+
 add_library(3rdparty::glew ALIAS 3rdparty_glew)
 add_library(3rdparty::wolfssl ALIAS wolfssl)
 add_library(3rdparty::libcurl ALIAS 3rdparty_libcurl)
