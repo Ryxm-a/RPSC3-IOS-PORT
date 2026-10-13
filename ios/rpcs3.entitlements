@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- JIT: get-task-allow lets a debugger (StikDebug/SideStore/Xcode) attach and set CS_DEBUGGED -->
+	<key>get-task-allow</key><true/>
+	<!-- macOS hardened-runtime keys; ignored on iOS but harmless -->
+	<key>com.apple.security.cs.allow-jit</key><true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+	<key>com.apple.security.cs.disable-library-validation</key><true/>
+	<!-- RPCS3 reserves a ~4+GB guest address space; PS3 needs lots of RAM.
+	     These need the matching capabilities on the signing account; sideloaders may strip them. -->
+	<key>com.apple.developer.kernel.extended-virtual-addressing</key><true/>
+	<key>com.apple.developer.kernel.increased-memory-limit</key><true/>
+	<key>com.apple.developer.kernel.increased-debugging-memory-limit</key><true/>
+	<!-- NOTE: do NOT add com.apple.private.* entitlements (e.g. private.security.no-sandbox).
+	     They are not grantable to third-party apps; signers/AMFI reject the app or kill it at launch. -->
+</dict>
+</plist>
