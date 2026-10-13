@@ -15,7 +15,7 @@
 #ifdef HAVE_SDL3
 #include "sdl_pad_handler.h"
 #endif
-#ifndef ANDROID
+#if !defined(ANDROID) && !defined(RPCS3_IOS)
 #include "keyboard_pad_handler.h"
 #endif
 #include "Emu/Io/Null/NullPadHandler.h"
@@ -154,7 +154,7 @@ void pad_thread::Init()
 
 	input_log.trace("Using pad config:\n%s", g_cfg_input);
 
-#ifndef ANDROID
+#if !defined(ANDROID) && !defined(RPCS3_IOS)
 	std::shared_ptr<keyboard_pad_handler> keyptr;
 #endif
 
@@ -177,7 +177,7 @@ void pad_thread::Init()
 		{
 			if (handler_type == pad_handler::keyboard)
 			{
-#ifndef ANDROID
+#if !defined(ANDROID) && !defined(RPCS3_IOS)
 				keyptr = std::make_shared<keyboard_pad_handler>();
 				keyptr->moveToThread(static_cast<QThread*>(m_curthread));
 				keyptr->SetTargetWindow(static_cast<QWindow*>(m_curwindow));
@@ -857,7 +857,7 @@ std::shared_ptr<PadHandlerBase> pad_thread::GetHandler(pad_handler type)
 	case pad_handler::null:
 		return std::make_shared<NullPadHandler>();
 	case pad_handler::keyboard:
-#ifdef ANDROID
+#if defined(ANDROID) || defined(RPCS3_IOS)
 		return std::make_shared<NullPadHandler>();
 #else
 		return std::make_shared<keyboard_pad_handler>();
