@@ -9,6 +9,23 @@ endif()
 
 project(rpcs3 LANGUAGES C CXX)
 
+# iOS: configure with -DCMAKE_SYSTEM_NAME=iOS (Xcode generator). Qt-less, library + app shell.
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(IOS TRUE)
+    set(RPCS3_NO_QT TRUE)
+    set(USE_NATIVE_INSTRUCTIONS OFF CACHE BOOL "" FORCE)
+    set(USE_DISCORD_RPC OFF CACHE BOOL "" FORCE)
+    set(USE_LIBEVDEV OFF CACHE BOOL "" FORCE)
+    set(USE_GAMEMODE OFF CACHE BOOL "" FORCE)
+    set(USE_FAUDIO OFF CACHE BOOL "" FORCE)
+    set(USE_SDL OFF CACHE BOOL "" FORCE)
+    set(USE_LTO OFF CACHE BOOL "" FORCE)
+    set(DISABLE_LTO TRUE)
+    add_compile_definitions(RPCS3_IOS=1 WITHOUT_OPENGL=1)
+elseif(ANDROID)
+    set(RPCS3_NO_QT TRUE)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -95,7 +112,7 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "RPCS3 can only be compiled on 64-bit platforms.")
 endif()
 
-if(APPLE AND CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+if(APPLE AND NOT IOS AND CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
     list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew")
     list(APPEND CMAKE_SYSTEM_PREFIX_PATH "/opt/homebrew")
 endif()
