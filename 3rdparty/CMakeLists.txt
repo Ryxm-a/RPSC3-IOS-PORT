@@ -64,6 +64,8 @@ if(CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD")
 	# Always use system libusb as reference implementation isn't supported
 	add_library(usb-1.0-shared INTERFACE)
 	target_link_libraries(usb-1.0-shared INTERFACE PkgConfig::LIBUSB)
+elseif(IOS)
+	# iOS: stubs defined in ios_stubs (after hidapi target exists)
 elseif(MSVC)
 	# Windows time.h defines timespec but doesn't add any flag for it, which makes libusb attempt to define it again
 	add_definitions(-DHAVE_STRUCT_TIMESPEC=1)
@@ -86,7 +88,12 @@ endif()
 
 
 # hidapi
-add_subdirectory(hidapi)
+if(IOS)
+	add_library(3rdparty_hidapi INTERFACE)
+	add_subdirectory(ios_stubs)
+else()
+	add_subdirectory(hidapi)
+endif()
 
 # glslang
 add_subdirectory(glslang EXCLUDE_FROM_ALL)
@@ -155,7 +162,19 @@ endif()
 # Vulkan
 set(VULKAN_TARGET 3rdparty_dummy_lib)
 if(USE_VULKAN)
-	if(APPLE)
+	if(IOS)
+		# Static MoltenVK built by CI (make ios) -> MVK_IOS_DIR
+		set(MVK_IOS_DIR "" CACHE PATH "Directory holding MoltenVK include/ and libMoltenVK.a")
+		if(NOT MVK_IOS_DIR)
+			message(FATAL_ERROR "Set -DMVK_IOS_DIR=<MoltenVK ios build dir>")
+		endif()
+		add_library(3rdparty_vulkan INTERFACE)
+		target_compile_definitions(3rdparty_vulkan INTERFACE -DHAVE_VULKAN)
+		target_include_directories(3rdparty_vulkan SYSTEM INTERFACE "${MVK_IOS_DIR}/include")
+		target_link_libraries(3rdparty_vulkan INTERFACE "${MVK_IOS_DIR}/libMoltenVK.a"
+			"-framework Metal" "-framework IOSurface" "-framework QuartzCore" "-framework UIKit" "-framework CoreGraphics" "-framework Foundation")
+		set(VULKAN_TARGET 3rdparty_vulkan)
+	elseif(APPLE)
 		if(USE_SYSTEM_MVK)
 			message(STATUS "RPCS3: Using system MoltenVK")
 		else()
@@ -182,8 +201,12 @@ if(USE_VULKAN)
 		endif()
 	endif()
 
+	if(NOT IOS)
 	find_package(Vulkan)
-	if(VULKAN_FOUND)
+	endif()
+	if(IOS)
+		# MoltenVK target already defined above
+	elseif(VULKAN_FOUND)
 		add_library(3rdparty_vulkan INTERFACE)
 		target_compile_definitions(3rdparty_vulkan INTERFACE -DHAVE_VULKAN)
 		target_link_libraries(3rdparty_vulkan INTERFACE Vulkan::Vulkan)
@@ -232,7 +255,7 @@ if(USE_SDL)
 endif()
 
 # OpenAL
-if (NOT ANDROID)
+if (NOT ANDROID AND NOT IOS)
 	add_subdirectory(OpenAL EXCLUDE_FROM_ALL)
 else()
 	add_library(3rdparty_openal INTERFACE)
@@ -278,7 +301,7 @@ set_property(TARGET ${FAUDIO_TARGET} PROPERTY FOLDER "3rdparty/")
 
 
 # FFMPEG
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT IOS)
 	add_library(3rdparty_ffmpeg INTERFACE)
 
 	# Select the version of ffmpeg to use, default is builtin
