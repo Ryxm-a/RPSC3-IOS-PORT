@@ -1,0 +1,133 @@
+name: Build iOS IPA
+
+# Manual only: run it from the Actions tab ("Run workflow"). Uploading files never starts a build.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    # GitHub's hard limit is 360 min. The Build step below has its own, shorter timeout so that
+    # the cache is still saved when a long first build runs out of time (just run it again).
+    timeout-minutes: 355
+    env:
+      MVK_TAG: v1.3.0
+      IOS_MIN: "16.0"
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_MAXSIZE: 4G
+      CCACHE_COMPRESS: "1"
+      CCACHE_COMPILERCHECK: content
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Select Xcode / install tools
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app || true
+          xcodebuild -version
+          brew install cmake ninja ccache python-setuptools pkg-config
+          xcrun --sdk iphoneos --show-sdk-path
+
+      # ccache: restore the newest cache from any earlier run (even a failed or timed-out one),
+      # and always save a new one at the end (see "Save ccache"). The key is unique per run
+      # because a cache with an existing key can never be overwritten.
+      - name: Restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ios-ccache-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ios-ccache-
+
+      - name: Restore MoltenVK
+        id: mvk
+        uses: actions/cache/restore@v4
+        with:
+          path: mvk-ios
+          key: mvk-ios-${{ env.MVK_TAG }}
+
+      - name: Build MoltenVK (static, iOS arm64)
+        if: steps.mvk.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch "$MVK_TAG" https://github.com/KhronosGroup/MoltenVK.git "$RUNNER_TEMP/MoltenVK"
+          cd "$RUNNER_TEMP/MoltenVK"
+          ./fetchDependencies --ios
+          make ios
+          mkdir -p "$GITHUB_WORKSPACE/mvk-ios"
+          cp -R Package/Latest/MoltenVK/include "$GITHUB_WORKSPACE/mvk-ios/include"
+          LIB=$(find Package/Latest/MoltenVK/static -path '*ios-arm64/*' -name 'libMoltenVK.a' | head -n1)
+          test -n "$LIB"
+          cp "$LIB" "$GITHUB_WORKSPACE/mvk-ios/libMoltenVK.a"
+
+      - name: Save MoltenVK
+        if: steps.mvk.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: mvk-ios
+          key: mvk-ios-${{ env.MVK_TAG }}
+
+      - name: Configure
+        run: |
+          ccache -z
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=$IOS_MIN \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
+            -DBUILD_LLVM=ON -DWITH_LLVM=ON -DSTATIC_LINK_LLVM=ON \
+            -DUSE_VULKAN=ON -DUSE_SYSTEM_MVK=ON -DMVK_IOS_DIR="$GITHUB_WORKSPACE/mvk-ios" \
+            -DUSE_SYSTEM_OPENCV=OFF -DUSE_SYSTEM_CURL=OFF -DUSE_SYSTEM_SDL=OFF \
+            -DUSE_SYSTEM_ZLIB=OFF -DUSE_PRECOMPILED_HEADERS=OFF
+
+      # "-k 0" keeps ninja going after the first error, so one run reports *every* compile error
+      # instead of just the first one. Everything that did compile is stored in ccache, so the
+      # next run only rebuilds what failed.
+      - name: Build
+        timeout-minutes: 280
+        run: cmake --build build --target rpcs3_ios -j$(sysctl -n hw.ncpu) -- -k 0
+
+      - name: ccache stats
+        if: always()
+        run: ccache -s || true
+
+      # always(): save progress even if the build failed or hit the step timeout above.
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ios-ccache-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Package IPA
+        run: |
+          APP=$(find build -type d -name 'RPCS3.app' | head -n1)
+          test -n "$APP"
+          rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
+          # Ad-hoc sign with JIT entitlements; SideStore/AltStore/etc. re-sign on install.
+          codesign -f -s - --entitlements rpcs3/ios/rpcs3.entitlements Payload/RPCS3.app
+          codesign -d --entitlements - Payload/RPCS3.app || true
+          zip -qr RPCS3.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RPCS3-ios-ipa
+          path: RPCS3.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload CMake logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmake-logs
+          path: |
+            build/CMakeFiles/CMakeConfigureLog.yaml
+            build/CMakeFiles/CMakeError.log
+            build/.ninja_log
+          if-no-files-found: ignore
